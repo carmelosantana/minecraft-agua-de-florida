@@ -1,0 +1,123 @@
+# Agua de Florida Configuration
+# Settings for the spiritual cleansing totem-like item
+
+# Item settings
+item:
+  # Custom name for the Agua de Florida item
+  name: "§6§lAgua de Florida"
+  
+  # Custom lore lines for the item
+  lore:
+    - "§7A mystical blend of citrus and flowers,"
+    - "§7blessed with spiritual cleansing power."
+    - "§e§oProvides a second chance at life."
+    - ""
+    - "§8§oUse when all hope seems lost..."
+
+  # Base material for the item (should be WATER_BUCKET)
+  material: WATER_BUCKET
+  
+  # Whether the item should glow (enchanted appearance)
+  enchanted: true
+  
+  # Whether the item should be unbreakable
+  unbreakable: true
+
+# Totem behavior settings
+totem:
+  # Health restored when totem activates (in half-hearts)
+  # Default totem restores to 1 health (0.5 hearts)
+  restore_health: 1.0
+  
+  # Effects applied when totem activates
+  effects:
+    # Regeneration effect
+    regeneration:
+      duration: 900  # 45 seconds (in ticks)
+      amplifier: 1   # Regeneration II
+    
+    # Absorption effect
+    absorption:
+      duration: 100  # 5 seconds (in ticks)  
+      amplifier: 1   # Absorption II
+    
+    # Fire resistance effect
+    fire_resistance:
+      duration: 800  # 40 seconds (in ticks)
+      amplifier: 0   # Fire Resistance I
+  
+  # Whether to show the totem animation and particles
+  show_animation: true
+  
+  # Whether to play the totem sound
+  play_sound: true
+  
+  # Whether to consume the item after use
+  consume_on_use: true
+
+# Mob drops configuration
+mob_drops:
+  # Whether mobs can drop Agua de Florida
+  enabled: true
+  
+  # Which mob types can drop the item
+  mob_types:
+    - WITCH
+    - EVOKER
+    - VINDICATOR
+  
+  # Base drop rate (0.0 to 1.0)
+  drop_rate: 0.05  # 5% chance
+  
+  # Drop rate multiplier based on looting enchantment
+  # Final rate = base_rate * (1 + looting_level * looting_multiplier)
+  looting_multiplier: 0.5  # 50% increase per looting level
+
+# Recipe configuration (if crafting is enabled)
+recipe:
+  # Whether players can craft Agua de Florida
+  enabled: false
+  
+  # Recipe pattern (3x3 crafting grid)
+  pattern:
+    - "FLF"
+    - "LWL" 
+    - "FCF"
+  
+  # Recipe ingredients
+  ingredients:
+    F: YELLOW_DYE    # Flower essence (yellow dye)
+    L: SWEET_BERRIES # Lavender substitute
+    W: WATER_BUCKET  # Base water bucket
+    C: GOLD_NUGGET   # Cinnamon substitute
+
+# Messages and text configuration
+messages:
+  # Message sent when item is given to player
+  item_given: "§aYou have received §6Agua de Florida§a!"
+  
+  # Message sent when item is used (life saved)
+  life_saved: "§eThe Agua de Florida has cleansed your spirit and granted you a second chance!"
+  
+  # Message when trying to use without having the item
+  no_item: "§cYou must hold Agua de Florida in your hand to receive its blessing."
+  
+  # Message when configuration is reloaded
+  config_reloaded: "§aAgua de Florida configuration has been reloaded!"
+
+# Cross-platform compatibility settings
+cross_platform:
+  # Whether to automatically move items from offhand to main hand for Bedrock players
+  # This helps with Bedrock Edition's limited offhand UI functionality
+  auto_move_to_main_hand: false
+
+# Debug and logging settings
+debug:
+  # Whether to log debug information
+  enabled: false
+  
+  # Whether to log when players are saved by Agua de Florida
+  log_saves: true
+  
+  # Whether to log mob drops
+  log_drops: true

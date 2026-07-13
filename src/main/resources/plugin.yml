@@ -1,0 +1,28 @@
+main: org.xpfarm.aguadeflorida.AguaDeFloridaPlugin
+name: AguaDeFlorida
+version: '${project.version}'
+description: ${project.description}
+author: Carmelo Santana
+website: ${project.url}
+api-version: '1.21'
+
+commands:
+  aguadeflorida:
+    description: Agua de Florida main command
+    aliases: [agua, adf]
+    usage: /<command> [help|give|reload]
+    permission: aguadeflorida.use
+
+permissions:
+  aguadeflorida.use:
+    description: Basic permission to use Agua de Florida commands
+    default: true
+  aguadeflorida.give:
+    description: Permission to give Agua de Florida items
+    default: op
+  aguadeflorida.reload:
+    description: Permission to reload the plugin configuration
+    default: op
+  aguadeflorida.admin:
+    description: Full admin permissions for Agua de Florida
+    default: op
