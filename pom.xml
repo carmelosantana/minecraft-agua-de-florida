@@ -19,7 +19,7 @@
 
     <name>Agua de Florida</name>
     <description>Spiritual cleansing totem-like item for Minecraft</description>
-    <url>xp.farm</url>
+    <url>https://xpfarm.org</url>
 
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
