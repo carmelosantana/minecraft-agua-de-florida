@@ -414,17 +414,17 @@ model.
 ## 8. CI/CD
 
 - [x] Identical standard plugin Actions workflow is installed with the required triggers, Temurin 25 build, artifact, checksum, and release behavior. Present from 1.1.1.
-- [x] Successful main Actions run is recorded before tagging. Run `29742405737` on `main` for commit `b1a7fd7` — `completed / success`, 26s. Tag was created on that exact commit.
+- [x] Successful main Actions run is recorded before tagging. For `1.1.3`: `fix/floodgate-name-resolution` was merged fast-forward to `main` and pushed on 2026-07-20. The `main`-branch Actions run for commit `badb66e` completed with conclusion `success` **before** tag `v1.1.3` was created. No tag was pushed against a red or in-flight run. Previously for `1.1.2`: run `29742405737` on `main` for commit `b1a7fd7` — `completed / success`, 26s.
 - [x] Workflow permissions contain no broader access than the documented contract.
 
-## 9. Release — `v1.1.2` COMPLETE
+## 9. Release — `v1.1.3` COMPLETE
 
-- [x] Semantic version matches the POM, plugin metadata, and `v<version>` tag. `pom.xml` `1.1.2`; `plugin.yml` uses `version: '${project.version}'` (filtered, no hardcoded drift); tag `v1.1.2`.
-- [x] Successful tag Actions run and GitHub release are recorded. Run `29747659405` on `v1.1.2` — `completed / success`, 31s. Release published by `github-actions[bot]`, not draft, not prerelease.
-- [x] Release contains exactly one updater-matching JAR plus `SHA256SUMS.txt` and no `original-*` JAR. Verified on the downloaded assets: 1 JAR matching `^agua-de-florida-[0-9].*\.jar$`, 0 files matching `original-*`. Shading was removed this release, so `original-*` can no longer be produced at all.
-- [x] Downloaded release assets pass `sha256sum --check SHA256SUMS.txt`. `agua-de-florida-1.1.2.jar: OK`.
+- [x] Semantic version matches the POM, plugin metadata, and `v<version>` tag. Verified: `pom.xml` `<version>` `1.1.3` equals tag `v1.1.3` equals the `plugin.yml` version read out of the built JAR.
+- [x] Successful tag Actions run and GitHub release are recorded. Annotated tag `v1.1.3` created on verified commit `badb66e` and pushed; the tag Actions run completed with conclusion `success`. GitHub release published 2026-07-20 14:47:54 UTC with `draft=false`, `prerelease=false`, and it is now the repository's Latest release.
+- [x] Release contains exactly one updater-matching JAR plus `SHA256SUMS.txt` and no `original-*` JAR. Verified by downloading the published release assets: exactly one JAR matching the updater asset pattern, plus `SHA256SUMS.txt`, and no `original-*` JAR.
+- [x] Downloaded release assets pass `sha256sum --check SHA256SUMS.txt`. Reported `OK` for the JAR.
 
-`v2.0.0` will re-run this section. Its boxes are not pre-ticked here.
+Previous release `v1.1.2` was published the same way. `v2.0.0` will re-run this section; its boxes are not pre-ticked here.
 
 ## 10. Updater
 
@@ -433,11 +433,15 @@ model.
 - [ ] Updater dry-run uses a disposable directory and never a production plugin directory.
 - [ ] Failure retains the installed JAR and default fail-open behavior permits Minecraft startup.
 
+Updater enrollment work was **not performed in this pass** (`v1.1.3` release only).
+
 ## 11. Deployment
 
 - [ ] Dokploy redeployment notes identify the full recreation used to rerun the one-shot updater.
 - [ ] Updater completion, Minecraft startup, destination JAR, and stack/plugin logs were inspected.
 - [ ] No production plugin hot reload was used.
+
+**Not performed.** The operator will deploy and verify live on the dev server with helpers.
 
 **2.0.0 rollback trigger:** if the data component fails to apply on the production Paper build, the
 plugin disables itself by design. Roll back to `v1.1.2` — which still contains the working
