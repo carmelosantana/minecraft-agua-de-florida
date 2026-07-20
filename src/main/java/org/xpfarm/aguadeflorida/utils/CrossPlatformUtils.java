@@ -85,21 +85,6 @@ public class CrossPlatformUtils {
     }
     
     /**
-     * Safely get an item from player's hands, prioritizing main hand for Bedrock players
-     * Uses default behavior (no automatic moving)
-     * @param player The player
-     * @param inventory The player's inventory
-     * @param itemChecker Function to check if an item is the desired type
-     * @return HandSlotResult containing the item and slot information
-     * @deprecated Use getItemFromHands(Player, PlayerInventory, Predicate, boolean) instead
-     */
-    @Deprecated
-    public static HandSlotResult getItemFromHands(Player player, PlayerInventory inventory, 
-                                                  java.util.function.Predicate<ItemStack> itemChecker) {
-        return getItemFromHands(player, inventory, itemChecker, false);
-    }
-    
-    /**
      * Safely set an item in a player's hand slot, with special handling for Bedrock players
      * @param player The player
      * @param inventory The player's inventory

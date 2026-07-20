@@ -9,6 +9,7 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.xpfarm.aguadeflorida.AguaDeFloridaPlugin;
 
@@ -50,16 +51,18 @@ public class AguaItemBuilder {
         ItemStack item = new ItemStack(material);
         
         item.editMeta(meta -> {
-            // Set display name
+            // Set display name (italics off so the config formatting shows as written)
             Component displayName = LegacyComponentSerializer.legacySection()
-                .deserialize(config.getItemName());
+                .deserialize(config.getItemName())
+                .decoration(TextDecoration.ITALIC, false);
             meta.displayName(displayName);
-            
+
             // Set lore
             List<Component> lore = new ArrayList<>();
             for (String loreLine : config.getItemLore()) {
                 Component component = LegacyComponentSerializer.legacySection()
-                    .deserialize(loreLine);
+                    .deserialize(loreLine)
+                    .decoration(TextDecoration.ITALIC, false);
                 lore.add(component);
             }
             meta.lore(lore);
@@ -94,9 +97,19 @@ public class AguaItemBuilder {
         }
         
         ItemMeta meta = item.getItemMeta();
-        return meta.getPersistentDataContainer().has(itemKey, PersistentDataType.BOOLEAN);
+        // Read the value, not just key presence: an item tagged explicitly false is not ours
+        return isTagPresentAndTrue(meta.getPersistentDataContainer().get(itemKey, PersistentDataType.BOOLEAN));
     }
-    
+
+    /**
+     * Evaluate a persistent data tag value as a genuine-item marker
+     * @param tagValue The value read from the container, may be null when absent
+     * @return true only when the tag is present and true
+     */
+    static boolean isTagPresentAndTrue(Boolean tagValue) {
+        return Boolean.TRUE.equals(tagValue);
+    }
+
     /**
      * Get a cached Agua de Florida item for performance
      * @return Cached ItemStack
@@ -154,10 +167,13 @@ public class AguaItemBuilder {
         
         try {
             plugin.getServer().removeRecipe(recipeKey);
-            recipeRegistered = false;
             plugin.debugLog("Agua de Florida recipe unregistered");
         } catch (Exception e) {
             plugin.getLogger().warning("Failed to unregister Agua de Florida recipe: " + e.getMessage());
+        } finally {
+            // Always clear the flag: leaving it set would make registerRecipe() early-return
+            // forever, so a reload could never rebuild the recipe with the new result item
+            recipeRegistered = false;
         }
     }
     

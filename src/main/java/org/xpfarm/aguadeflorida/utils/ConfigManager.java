@@ -16,7 +16,16 @@ import java.util.HashSet;
  * Manages configuration loading and provides easy access to config values
  */
 public class ConfigManager {
-    
+
+    /** Highest per-level looting multiplier accepted from config. */
+    static final double MAX_LOOTING_MULTIPLIER = 10.0;
+    /** Highest restore_health accepted from config, in half-hearts. */
+    static final double MAX_RESTORE_HEALTH = 1024.0;
+    /** Highest potion amplifier accepted from config. */
+    static final int MAX_EFFECT_AMPLIFIER = 255;
+    /** Highest potion duration accepted from config, in ticks. */
+    static final int MAX_EFFECT_DURATION = 1000000;
+
     private final AguaDeFloridaPlugin plugin;
     private FileConfiguration config;
     
@@ -54,21 +63,24 @@ public class ConfigManager {
         // Load item settings
         itemName = config.getString("item.name", "&b&lAgua de Florida &r&7(Spiritual Protection)");
         itemLore = config.getStringList("item.lore");
+        // getString is declared nullable, so guard rather than assume the default applies
         String materialName = config.getString("item.material", "WATER_BUCKET");
-        try {
-            itemMaterial = Material.valueOf(materialName.toUpperCase());
-            if (itemMaterial == null) {
-                throw new IllegalArgumentException("Material resolved to null");
-            }
-        } catch (IllegalArgumentException e) {
-            plugin.getLogger().warning("Invalid material: " + materialName + ", using WATER_BUCKET");
+        if (materialName == null || materialName.trim().isEmpty()) {
+            plugin.getLogger().warning("Missing item.material, using WATER_BUCKET");
             itemMaterial = Material.WATER_BUCKET;
+        } else {
+            try {
+                itemMaterial = Material.valueOf(materialName.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Invalid material: " + materialName + ", using WATER_BUCKET");
+                itemMaterial = Material.WATER_BUCKET;
+            }
         }
         itemEnchanted = config.getBoolean("item.enchanted", true);
         itemUnbreakable = config.getBoolean("item.unbreakable", true);
         
         // Load totem settings
-        restoreHealth = config.getDouble("totem.restore_health", 1.0);
+        restoreHealth = loadClampedDouble("totem.restore_health", 1.0, 0.0, MAX_RESTORE_HEALTH);
         loadEffects();
         showAnimation = config.getBoolean("totem.show_animation", true);
         playSound = config.getBoolean("totem.play_sound", true);
@@ -77,8 +89,10 @@ public class ConfigManager {
         // Load mob drops settings
         mobDropsEnabled = config.getBoolean("mob_drops.enabled", true);
         loadDropMobTypes();
-        dropRate = config.getDouble("mob_drops.drop_rate", 0.05);
-        lootingMultiplier = config.getDouble("mob_drops.looting_multiplier", 0.5);
+        // Validate at load time so an out-of-range value is reported to the admin,
+        // instead of silently producing an impossible drop chance at kill time
+        dropRate = loadClampedDouble("mob_drops.drop_rate", 0.05, 0.0, 1.0);
+        lootingMultiplier = loadClampedDouble("mob_drops.looting_multiplier", 0.5, 0.0, MAX_LOOTING_MULTIPLIER);
         
         // Load recipe settings
         recipeEnabled = config.getBoolean("recipe.enabled", false);
@@ -97,21 +111,82 @@ public class ConfigManager {
      */
     private void loadEffects() {
         effects = new ArrayList<>();
-        
+
+        // PotionEffect rejects a negative duration or amplifier outright, which would
+        // abort the whole config load, so every value is clamped and reported first.
+
         // Regeneration
-        int regenDuration = config.getInt("totem.effects.regeneration.duration", 900);
-        int regenAmplifier = config.getInt("totem.effects.regeneration.amplifier", 1);
-        effects.add(new PotionEffect(PotionEffectType.REGENERATION, regenDuration, regenAmplifier));
-        
+        addEffect(PotionEffectType.REGENERATION, "regeneration", 900, 1);
+
         // Absorption
-        int absorpDuration = config.getInt("totem.effects.absorption.duration", 100);
-        int absorpAmplifier = config.getInt("totem.effects.absorption.amplifier", 1);
-        effects.add(new PotionEffect(PotionEffectType.ABSORPTION, absorpDuration, absorpAmplifier));
-        
+        addEffect(PotionEffectType.ABSORPTION, "absorption", 100, 1);
+
         // Fire Resistance
-        int fireresDuration = config.getInt("totem.effects.fire_resistance.duration", 800);
-        int fireresAmplifier = config.getInt("totem.effects.fire_resistance.amplifier", 0);
-        effects.add(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, fireresDuration, fireresAmplifier));
+        addEffect(PotionEffectType.FIRE_RESISTANCE, "fire_resistance", 800, 0);
+    }
+
+    /**
+     * Read one configured potion effect, clamping duration and amplifier to sane values
+     * @param type The effect to apply
+     * @param key The config key under totem.effects
+     * @param defaultDuration The duration in ticks to use when unset or invalid
+     * @param defaultAmplifier The amplifier to use when unset or invalid
+     */
+    private void addEffect(PotionEffectType type, String key, int defaultDuration, int defaultAmplifier) {
+        int duration = loadClampedInt("totem.effects." + key + ".duration", defaultDuration, 0, MAX_EFFECT_DURATION);
+        int amplifier = loadClampedInt("totem.effects." + key + ".amplifier", defaultAmplifier, 0, MAX_EFFECT_AMPLIFIER);
+        effects.add(new PotionEffect(type, duration, amplifier));
+    }
+
+    /**
+     * Read a double from config, clamping it to a range and warning when it was out of range
+     * @param path The config path
+     * @param defaultValue The value to use when unset or unusable
+     * @param min The lowest accepted value
+     * @param max The highest accepted value
+     * @return The clamped value
+     */
+    private double loadClampedDouble(String path, double defaultValue, double min, double max) {
+        double raw = config.getDouble(path, defaultValue);
+        double value = clamp(raw, min, max, defaultValue);
+        if (value != raw) {
+            plugin.getLogger().warning("Invalid " + path + ": " + raw
+                + " (expected " + min + " to " + max + "), using " + value);
+        }
+        return value;
+    }
+
+    /**
+     * Read an int from config, clamping it to a range and warning when it was out of range
+     * @param path The config path
+     * @param defaultValue The value to use when unset
+     * @param min The lowest accepted value
+     * @param max The highest accepted value
+     * @return The clamped value
+     */
+    private int loadClampedInt(String path, int defaultValue, int min, int max) {
+        int raw = config.getInt(path, defaultValue);
+        int value = Math.max(min, Math.min(raw, max));
+        if (value != raw) {
+            plugin.getLogger().warning("Invalid " + path + ": " + raw
+                + " (expected " + min + " to " + max + "), using " + value);
+        }
+        return value;
+    }
+
+    /**
+     * Clamp a configured double into a range, falling back for values that are not real numbers
+     * @param value The configured value
+     * @param min The lowest accepted value
+     * @param max The highest accepted value
+     * @param defaultValue The value to use when NaN
+     * @return The clamped value
+     */
+    static double clamp(double value, double min, double max, double defaultValue) {
+        if (Double.isNaN(value)) {
+            return defaultValue;
+        }
+        return Math.max(min, Math.min(value, max));
     }
     
     /**
@@ -122,8 +197,11 @@ public class ConfigManager {
         List<String> mobTypeNames = config.getStringList("mob_drops.mob_types");
         
         for (String mobTypeName : mobTypeNames) {
+            if (mobTypeName == null || mobTypeName.trim().isEmpty()) {
+                continue;
+            }
             try {
-                EntityType entityType = EntityType.valueOf(mobTypeName.toUpperCase());
+                EntityType entityType = EntityType.valueOf(mobTypeName.trim().toUpperCase());
                 dropMobTypes.add(entityType);
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("Invalid mob type: " + mobTypeName);
@@ -160,7 +238,11 @@ public class ConfigManager {
      * @return The translated message
      */
     public String getMessage(String path, String defaultValue) {
+        // getString is declared nullable, and callers may pass a null default
         String message = config.getString("messages." + path, defaultValue);
-        return message.replace('&', '§');
+        if (message == null) {
+            message = defaultValue;
+        }
+        return message == null ? "" : message.replace('&', '§');
     }
 }

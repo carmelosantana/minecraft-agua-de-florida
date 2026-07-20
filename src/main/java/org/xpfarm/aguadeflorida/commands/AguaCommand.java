@@ -2,6 +2,7 @@ package org.xpfarm.aguadeflorida.commands;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Handles all Agua de Florida commands
@@ -26,9 +28,7 @@ public class AguaCommand implements CommandExecutor, TabCompleter {
     private final AguaDeFloridaPlugin plugin;
     private final ConfigManager configManager;
     private final AguaItemBuilder itemBuilder;
-    
-    private final List<String> subCommands = Arrays.asList("give", "reload", "help");
-    
+
     public AguaCommand(AguaDeFloridaPlugin plugin) {
         this.plugin = plugin;
         this.configManager = plugin.getConfigManager();
@@ -74,7 +74,8 @@ public class AguaCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 2) {
             // Target player specified
             String targetName = args[1];
-            target = plugin.getServer().getPlayer(targetName);
+            // Exact match only: prefix matching could resolve "Car" to "Carmelo123"
+            target = plugin.getServer().getPlayerExact(targetName);
             if (target == null) {
                 sender.sendMessage(Component.text("Player '" + targetName + "' not found.", NamedTextColor.RED));
                 return true;
@@ -106,31 +107,69 @@ public class AguaCommand implements CommandExecutor, TabCompleter {
             }
         }
         
-        // Give the item(s)
+        // Give the item(s). The item may have a max stack size of 1, so the total
+        // has to be handed out one stack at a time rather than via setAmount().
         ItemStack aguaItem = itemBuilder.getCachedItem();
-        aguaItem.setAmount(amount);
-        
-        // Try to add to inventory, drop if full
-        if (target.getInventory().firstEmpty() != -1 || 
-            target.getInventory().containsAtLeast(aguaItem, 1)) {
-            target.getInventory().addItem(aguaItem);
-        } else {
-            target.getWorld().dropItemNaturally(target.getLocation(), aguaItem);
+        boolean dropped = false;
+
+        for (int stackSize : splitIntoStacks(amount, aguaItem.getMaxStackSize())) {
+            ItemStack stack = aguaItem.clone();
+            stack.setAmount(stackSize);
+
+            // addItem returns whatever did not fit; drop it instead of losing it
+            Map<Integer, ItemStack> leftovers = target.getInventory().addItem(stack);
+            for (ItemStack leftover : leftovers.values()) {
+                target.getWorld().dropItemNaturally(target.getLocation(), leftover);
+                dropped = true;
+            }
+        }
+
+        if (dropped) {
             target.sendMessage(Component.text("Your inventory is full! Agua de Florida dropped at your feet.", NamedTextColor.YELLOW));
         }
-        
-        // Notify participants
-        String itemName = configManager.getItemName();
-        target.sendMessage(Component.text("You have received " + amount + "x " + itemName + "!", NamedTextColor.GREEN));
-        
+
+        // Notify participants. The configured name is legacy-coloured, so it has to be
+        // deserialized instead of concatenated into a plain Component.text(...)
+        Component itemName = LegacyComponentSerializer.legacySection().deserialize(configManager.getItemName());
+        target.sendMessage(Component.text("You have received " + amount + "x ", NamedTextColor.GREEN)
+            .append(itemName)
+            .append(Component.text("!", NamedTextColor.GREEN)));
+
         if (!sender.equals(target)) {
-            sender.sendMessage(Component.text("Gave " + amount + "x " + itemName + " to " + target.getName(), NamedTextColor.GREEN));
+            sender.sendMessage(Component.text("Gave " + amount + "x ", NamedTextColor.GREEN)
+                .append(itemName)
+                .append(Component.text(" to " + target.getName(), NamedTextColor.GREEN)));
         }
-        
+
         plugin.debugLog("Gave " + amount + "x Agua de Florida to " + target.getName() + " (by " + sender.getName() + ")");
         return true;
     }
     
+    /**
+     * Split a total amount into per-iteration stack sizes, none larger than maxStackSize.
+     * Non-positive amounts produce no stacks. Package-private so it can be unit tested
+     * without a live server.
+     */
+    static List<Integer> splitIntoStacks(int amount, int maxStackSize) {
+        List<Integer> stacks = new ArrayList<>();
+
+        if (amount <= 0) {
+            return stacks;
+        }
+
+        // Guard against a nonsensical max stack size so this can never loop forever
+        int perStack = Math.max(1, maxStackSize);
+        int remaining = amount;
+
+        while (remaining > 0) {
+            int stackSize = Math.min(remaining, perStack);
+            stacks.add(stackSize);
+            remaining -= stackSize;
+        }
+
+        return stacks;
+    }
+
     /**
      * Handle the reload subcommand
      */

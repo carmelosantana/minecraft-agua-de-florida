@@ -3,9 +3,7 @@ package org.xpfarm.aguadeflorida;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 
 import java.util.logging.Logger;
@@ -47,7 +45,13 @@ public class AguaDeFloridaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MobDeathListener(this), this);
         
         // Register commands
-        getCommand("aguadeflorida").setExecutor(new AguaCommand(this));
+        PluginCommand aguaCommand = getCommand("aguadeflorida");
+        if (aguaCommand != null) {
+            aguaCommand.setExecutor(new AguaCommand(this));
+        } else {
+            logger.severe("Command 'aguadeflorida' is missing from plugin.yml - commands will not work. " +
+                          "Restore the 'commands:' block in plugin.yml and restart the server.");
+        }
         
         // Initialize recipe if enabled
         if (configManager.isRecipeEnabled()) {
@@ -98,12 +102,14 @@ public class AguaDeFloridaPlugin extends JavaPlugin {
     public void reloadPluginConfig() {
         reloadConfig();
         configManager.loadConfig();
-        
-        // Update recipe based on new config
+
+        // Rebuild the cached item so name, lore, material and enchant changes take effect
+        itemBuilder.updateCachedItem();
+
+        // Unregister first so the recipe result picks up the freshly rebuilt item
+        itemBuilder.unregisterRecipe();
         if (configManager.isRecipeEnabled()) {
             itemBuilder.registerRecipe();
-        } else {
-            itemBuilder.unregisterRecipe();
         }
         
         logger.info("Configuration reloaded!");

@@ -10,8 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.scheduler.BukkitRunnable;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.xpfarm.aguadeflorida.AguaDeFloridaPlugin;
 import org.xpfarm.aguadeflorida.utils.ConfigManager;
 import org.xpfarm.aguadeflorida.utils.AguaItemBuilder;
@@ -35,9 +34,8 @@ public class PlayerDeathListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        PlayerInventory inventory = player.getInventory();
-        
-                // Check for Agua de Florida in player's hands using cross-platform compatibility
+
+          // Check for Agua de Florida in player's hands using cross-platform compatibility
         CrossPlatformUtils.HandSlotResult result = CrossPlatformUtils.getItemFromHands(
             player, 
             player.getInventory(), 
@@ -136,7 +134,7 @@ public class PlayerDeathListener implements Listener {
         // Send message to player
         String message = configManager.getMessage("life_saved", 
             "§eThe Agua de Florida has cleansed your spirit and granted you a second chance!");
-        player.sendMessage(Component.text(message.replace('§', '&'), NamedTextColor.YELLOW));
+        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize(message));
         
         // Clear death-related effects
         player.setFireTicks(0);

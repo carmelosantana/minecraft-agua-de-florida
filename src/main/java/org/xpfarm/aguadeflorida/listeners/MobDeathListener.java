@@ -6,6 +6,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.enchantments.Enchantment;
 import org.xpfarm.aguadeflorida.AguaDeFloridaPlugin;
@@ -31,13 +32,20 @@ public class MobDeathListener implements Listener {
         this.random = new Random();
     }
     
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
+        // PlayerDeathEvent extends EntityDeathEvent, so this handler also fires for
+        // player deaths. Agua de Florida is a mob drop only; never attach it to a
+        // player's death drops, even if an admin puts PLAYER in mob_drops.mob_types.
+        if (event instanceof PlayerDeathEvent) {
+            return;
+        }
+
         // Check if mob drops are enabled
         if (!configManager.isMobDropsEnabled()) {
             return;
         }
-        
+
         LivingEntity entity = event.getEntity();
         
         // Check if this mob type can drop Agua de Florida
@@ -86,11 +94,42 @@ public class MobDeathListener implements Listener {
             lootingLevel = weapon.getItemMeta().getEnchantLevel(Enchantment.LOOTING);
         }
         
-        // Calculate final drop rate
-        double lootingMultiplier = configManager.getLootingMultiplier();
-        double finalRate = baseRate * (1.0 + (lootingLevel * lootingMultiplier));
-        
-        // Cap at 100% chance
-        return Math.min(finalRate, 1.0);
+        return computeDropRate(baseRate, lootingLevel, configManager.getLootingMultiplier());
+    }
+
+    /**
+     * Pure drop-rate arithmetic, split out so it can be tested without a live server.
+     *
+     * The result is clamped to [0.0, 1.0] at BOTH ends. Clamping only at the top used
+     * to let a negative drop_rate or looting_multiplier produce a negative chance,
+     * which silently disabled drops (random.nextDouble() is never below zero).
+     *
+     * The inputs are clamped too, not just the product. Clamping only the product
+     * would let two negatives cancel into a large positive chance, so a negative
+     * drop_rate paired with a negative looting_multiplier could drop on every kill.
+     * ConfigManager already rejects those values at load time; this is the second line.
+     *
+     * @param baseRate The configured base drop rate
+     * @param lootingLevel The looting level on the killing weapon
+     * @param lootingMultiplier The configured per-level looting multiplier
+     * @return The final drop chance, clamped to 0.0 to 1.0
+     */
+    static double computeDropRate(double baseRate, int lootingLevel, double lootingMultiplier) {
+        if (Double.isNaN(baseRate) || Double.isNaN(lootingMultiplier)) {
+            return 0.0;
+        }
+
+        double safeBaseRate = Math.max(0.0, Math.min(baseRate, 1.0));
+        double safeMultiplier = Math.max(0.0, lootingMultiplier);
+        int safeLootingLevel = Math.max(0, lootingLevel);
+
+        double finalRate = safeBaseRate * (1.0 + (safeLootingLevel * safeMultiplier));
+
+        if (Double.isNaN(finalRate)) {
+            return 0.0;
+        }
+
+        // Clamp to a real probability at both ends
+        return Math.max(0.0, Math.min(finalRate, 1.0));
     }
 }
