@@ -429,9 +429,26 @@ Previous release `v1.1.2` was published the same way. `v2.0.0` will re-run this 
 ## 10. Updater
 
 - [x] Updater manifest/tests cover repository, destination, anchored asset regex, legacy globs, enabled state, and optional pin. Already enrolled; `asset_regex` `^agua-de-florida-[0-9].*\.jar$` matches both `1.1.2` and `2.0.0`. **No manifest change required.**
-- [ ] Fresh install, upgrade, no-op, legacy archival, endpoint failure, and checksum failure behaviors pass. Re-verify on the `2.0.0` upgrade.
-- [ ] Updater dry-run uses a disposable directory and never a production plugin directory.
-- [ ] Failure retains the installed JAR and default fail-open behavior permits Minecraft startup.
+- [x] Fresh install, upgrade, no-op, legacy archival, endpoint failure, and checksum failure behaviors pass. Exercised for `v1.1.3` — see the behaviour matrix below. Re-verify on the `2.0.0` upgrade.
+- [x] Updater dry-run uses a disposable directory and never a production plugin directory. All runs used `/tmp/adf-gate10/{plugins,state,backups}`, with **all three** of `--plugins-dir`, `--state-file`, and `--backup-dir` overridden — `updater.py`'s defaults are `/minecraft/plugins`, `/minecraft/plugin-updater/state.json`, and `/minecraft/plugin-updater/backups`, so overriding only `--plugins-dir` would have written state and backups straight into the production volume. Sandbox discarded afterward.
+- [x] Failure retains the installed JAR and default fail-open behavior permits Minecraft startup. Verified by SHA comparison across a failure (below) and by exit-code measurement.
+
+### Gate 10 behaviour matrix — `v1.1.3`, exercised 2026-07-20
+
+Updater unit suite: `Ran 11 tests ... OK`. `python3 -m json.tool plugins.json` clean. No manifest change was made — the existing entry already matches `agua-de-florida-1.1.3.jar`, and no `pin` was added because the deploy target is deliberately the newest release.
+
+| Behaviour | Evidence |
+| --- | --- |
+| Fresh install (dry run, real manifest) | `Agua de Florida: would install v1.1.3`; plugins and state dirs both left with 0 files |
+| Upgrade `1.1.1` → `1.1.3` | `installed v1.1.3; archived legacy JARs: agua-de-florida-1.1.1.jar`; embedded `plugin.yml` reads `version: '1.1.3'` |
+| Backup of replaced JAR | `backups/agua-de-florida.jar.20260720T180319Z.bak` |
+| Legacy archival | `backups/agua-de-florida-1.1.1.jar.20260720T180319Z.legacy.bak`; plugins dir left holding **only** `agua-de-florida.jar`, so the server cannot double-load |
+| Already-current no-op | `Agua de Florida: already current (v1.1.3)`, exit 0 |
+| Endpoint failure | `WARNING: ... HTTP Error 404: Not Found; keeping installed JAR`; destination SHA byte-identical before and after; still `version: '1.1.3'` |
+| Checksum failure | `tests.test_updater.UpdaterTests.test_bad_checksum_preserves_installed_jar ... ok` — asserts `UpdateError` is raised **and** the pre-existing destination bytes are unchanged. Not reproducible against a live release (the checksum file is served by GitHub), so this is unit-level rather than end-to-end. |
+| Fail-open vs strict | default exit `0`; `--strict` exit `1`. Production runs without `--strict`, so a failed update warns and leaves the installed JAR rather than blocking Minecraft startup. |
+
+The upgrade case was staged from production's real starting state — `v1.1.1` installed as `agua-de-florida.jar` **plus** a stray versioned `agua-de-florida-1.1.1.jar` — rather than from an empty directory, because that stray-versioned-JAR case is exactly what `legacy_globs` exists to clean up.
 
 Updater enrollment work was **not performed in this pass** (`v1.1.3` release only).
 
