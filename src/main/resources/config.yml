@@ -5,7 +5,7 @@
 item:
   # Custom name for the Agua de Florida item
   name: "§6§lAgua de Florida"
-  
+
   # Custom lore lines for the item
   lore:
     - "§7A mystical blend of citrus and flowers,"
@@ -14,110 +14,98 @@ item:
     - ""
     - "§8§oUse when all hope seems lost..."
 
-  # Base material for the item (should be WATER_BUCKET)
-  material: WATER_BUCKET
-  
+  # NOTE: `material` was removed in 2.0.0 and is no longer read.
+  # The item is always a POTION, because that is what makes it inert on
+  # right-click. Making it configurable again would let an admin pick, say,
+  # WATER_BUCKET and reintroduce the placeable-item defect this release fixes.
+  #
+  # NOTE: `unbreakable` was removed in 2.0.0 as well. It is meaningless on a
+  # potion, which has no durability.
+
   # Whether the item should glow (enchanted appearance)
   enchanted: true
-  
-  # Whether the item should be unbreakable
-  unbreakable: true
+
+  # Liquid tint of the potion, as an RGB hex string.
+  # The leading '#' is optional. Anything unparseable falls back to #1E90FF.
+  color: "#1E90FF"
 
 # Totem behavior settings
 totem:
-  # Health restored when totem activates (in half-hearts)
-  # Default totem restores to 1 health (0.5 hearts)
-  restore_health: 1.0
-  
+  # NOTE: `restore_health` was removed in 2.0.0. The resurrection is performed by
+  # vanilla through the minecraft:death_protection data component, and this Paper
+  # API has no PlayerDeathEvent.setReviveHealth, so the plugin cannot honour a
+  # custom revive health at all. Vanilla's own behaviour applies.
+  #
+  # NOTE: `show_animation`, `play_sound` and `consume_on_use` were removed for the
+  # same reason: vanilla owns the totem animation, sound and item consumption now.
+
   # Effects applied when totem activates
   effects:
     # Regeneration effect
     regeneration:
       duration: 900  # 45 seconds (in ticks)
       amplifier: 1   # Regeneration II
-    
+
     # Absorption effect
     absorption:
-      duration: 100  # 5 seconds (in ticks)  
+      duration: 100  # 5 seconds (in ticks)
       amplifier: 1   # Absorption II
-    
+
     # Fire resistance effect
     fire_resistance:
       duration: 800  # 40 seconds (in ticks)
       amplifier: 0   # Fire Resistance I
-  
-  # Whether to show the totem animation and particles
-  show_animation: true
-  
-  # Whether to play the totem sound
-  play_sound: true
-  
-  # Whether to consume the item after use
-  consume_on_use: true
 
 # Mob drops configuration
 mob_drops:
   # Whether mobs can drop Agua de Florida
   enabled: true
-  
-  # Which mob types can drop the item
+
+  # Rate used for a mob listed below without a rate of its own (0.0 to 1.0)
+  default_rate: 0.05
+
+  # Which mob types can drop the item, and the base chance for each (0.0 to 1.0).
+  # A mob that is not listed here never drops the item. Give every entry an explicit
+  # rate: an entry left blank is discarded by the YAML reader, not defaulted. A rate
+  # that is out of range or not a number falls back to default_rate above.
   mob_types:
-    - WITCH
-    - EVOKER
-    - VINDICATOR
-  
-  # Base drop rate (0.0 to 1.0)
-  drop_rate: 0.05  # 5% chance
-  
+    WITCH: 0.08     # 8%
+    EVOKER: 0.25    # 25%
+    DROWNED: 0.01   # 1%
+    # NOTE: VINDICATOR was removed in 2.0.0. It shares raid content with the
+    # Evoker, so listing both just doubled up on the same source.
+
   # Drop rate multiplier based on looting enchantment
   # Final rate = base_rate * (1 + looting_level * looting_multiplier)
   looting_multiplier: 0.5  # 50% increase per looting level
 
-# Recipe configuration (if crafting is enabled)
-recipe:
-  # Whether players can craft Agua de Florida
-  enabled: false
-  
-  # Recipe pattern (3x3 crafting grid)
-  pattern:
-    - "FLF"
-    - "LWL" 
-    - "FCF"
-  
-  # Recipe ingredients
-  ingredients:
-    F: YELLOW_DYE    # Flower essence (yellow dye)
-    L: SWEET_BERRIES # Lavender substitute
-    W: WATER_BUCKET  # Base water bucket
-    C: GOLD_NUGGET   # Cinnamon substitute
+# NOTE: the `recipe` block was removed in 2.0.0. Crafting is gone, and its
+# `pattern` and `ingredients` keys were never read by any code even before that.
+#
+# NOTE: the `cross_platform` block (and `auto_move_to_main_hand`) was removed in
+# 2.0.0 along with the CrossPlatformUtils class it configured.
 
 # Messages and text configuration
 messages:
   # Message sent when item is given to player
   item_given: "§aYou have received §6Agua de Florida§a!"
-  
+
   # Message sent when item is used (life saved)
   life_saved: "§eThe Agua de Florida has cleansed your spirit and granted you a second chance!"
-  
+
   # Message when trying to use without having the item
   no_item: "§cYou must hold Agua de Florida in your hand to receive its blessing."
-  
+
   # Message when configuration is reloaded
   config_reloaded: "§aAgua de Florida configuration has been reloaded!"
-
-# Cross-platform compatibility settings
-cross_platform:
-  # Whether to automatically move items from offhand to main hand for Bedrock players
-  # This helps with Bedrock Edition's limited offhand UI functionality
-  auto_move_to_main_hand: false
 
 # Debug and logging settings
 debug:
   # Whether to log debug information
   enabled: false
-  
+
   # Whether to log when players are saved by Agua de Florida
   log_saves: true
-  
+
   # Whether to log mob drops
   log_drops: true

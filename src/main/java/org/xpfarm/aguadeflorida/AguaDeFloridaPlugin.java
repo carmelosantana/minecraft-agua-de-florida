@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 
 import java.util.logging.Logger;
 
-import org.xpfarm.aguadeflorida.listeners.PlayerDeathListener;
+import org.xpfarm.aguadeflorida.listeners.AguaResurrectListener;
 import org.xpfarm.aguadeflorida.listeners.MobDeathListener;
 import org.xpfarm.aguadeflorida.commands.AguaCommand;
 import org.xpfarm.aguadeflorida.utils.AguaItemBuilder;
@@ -39,11 +39,19 @@ public class AguaDeFloridaPlugin extends JavaPlugin {
         
         // Initialize item builder after config is loaded
         itemBuilder = new AguaItemBuilder(this);
-        
-        // Register event listeners
-        getServer().getPluginManager().registerEvents(new PlayerDeathListener(this), this);
+
+        // The whole plugin rests on vanilla applying minecraft:death_protection. Prove it
+        // did before serving a single item, and refuse to run if it did not.
+        if (!verifyDeathProtection()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        // Register event listeners. Resurrection itself is vanilla's; the resurrect
+        // listener only observes it for logging and messaging.
+        getServer().getPluginManager().registerEvents(new AguaResurrectListener(this), this);
         getServer().getPluginManager().registerEvents(new MobDeathListener(this), this);
-        
+
         // Register commands
         PluginCommand aguaCommand = getCommand("aguadeflorida");
         if (aguaCommand != null) {
@@ -53,22 +61,46 @@ public class AguaDeFloridaPlugin extends JavaPlugin {
                           "Restore the 'commands:' block in plugin.yml and restart the server.");
         }
         
-        // Initialize recipe if enabled
-        if (configManager.isRecipeEnabled()) {
-            itemBuilder.registerRecipe();
-        }
-        
         logger.info("Agua de Florida v" + getDescription().getVersion() + " enabled!");
         logger.info("Spiritual cleansing activated - may your journeys be blessed.");
     }
     
+    /**
+     * Confirm the death-protection data component actually applied to the built item.
+     *
+     * <p>Deliberately fail-loudly: the component is the only thing that saves a player, the
+     * data component API is experimental, and Paper promises no cross-version compatibility.
+     * An item that silently stopped saving anyone is far worse than a plugin that refuses to
+     * start, so there is no fallback path here and no emulated resurrection to degrade into.</p>
+     *
+     * @return true when the component applied and the plugin may continue enabling
+     */
+    private boolean verifyDeathProtection() {
+        boolean applied;
+        try {
+            applied = itemBuilder.verifyDeathProtectionApplied();
+        } catch (IllegalStateException e) {
+            // The item could not be built at all - a different failure from the component
+            // being dropped, and the cause is the only thing that explains it.
+            logger.log(java.util.logging.Level.SEVERE,
+                "Agua de Florida could not build its item, so DEATH_PROTECTION could not be verified. "
+                + "The item would not save players. Disabling the plugin.", e);
+            return false;
+        }
+
+        if (!applied) {
+            logger.severe("Agua de Florida could not apply the minecraft:death_protection data component "
+                + "to its item. This server's Paper build accepted the call and dropped the component, "
+                + "so the item would NOT save players from death. Disabling the plugin rather than "
+                + "serving an item that silently does nothing.");
+            return false;
+        }
+
+        return true;
+    }
+
     @Override
     public void onDisable() {
-        // Clean up recipes
-        if (itemBuilder != null) {
-            itemBuilder.unregisterRecipe();
-        }
-        
         logger.info("Agua de Florida disabled. Until we meet again...");
     }
     
@@ -106,12 +138,6 @@ public class AguaDeFloridaPlugin extends JavaPlugin {
         // Rebuild the cached item so name, lore, material and enchant changes take effect
         itemBuilder.updateCachedItem();
 
-        // Unregister first so the recipe result picks up the freshly rebuilt item
-        itemBuilder.unregisterRecipe();
-        if (configManager.isRecipeEnabled()) {
-            itemBuilder.registerRecipe();
-        }
-        
         logger.info("Configuration reloaded!");
     }
     

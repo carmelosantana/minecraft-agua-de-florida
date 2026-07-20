@@ -21,8 +21,7 @@
 ### 🎮 **Gameplay Integration**
 - **Smart Inventory Detection**: Automatically finds and consumes the item when needed
 - **Configurable Effects**: Fully customizable potion effects and durations
-- **Mob Drops**: Configure specific mobs to drop Agua de Florida items
-- **Crafting Recipe**: Optional crafting recipe for player acquisition
+- **Mob Drops**: Configure specific mobs to drop Agua de Florida items, with per-mob rates
 
 ### ⚙️ **Administrative Features**
 - **Flexible Configuration**: Comprehensive config.yml with all aspects customizable
@@ -84,20 +83,17 @@ effects:
 # Mob drops configuration
 mob_drops:
   enabled: true
-  mobs:
-    - WITCH
-    - EVOKER
-  drop_rate: 0.05
-  looting_multiplier: 0.02
-
-# Optional crafting recipe
-recipe:
-  enabled: true
-  ingredients:
-    - WATER_BUCKET
-    - NETHER_STAR
-    - GLOWSTONE_DUST
+  default_rate: 0.05
+  mob_types:
+    WITCH: 0.08
+    EVOKER: 0.25
+    DROWNED: 0.01
+  looting_multiplier: 0.5
 ```
+
+> **Note:** crafting was removed in 2.0.0. The item is obtained via `/aguadeflorida give` or mob
+> drops. The item material is no longer configurable — it is fixed to `POTION`, which is what makes
+> right-click inert.
 
 ## 🛠️ Building from Source
 

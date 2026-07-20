@@ -284,7 +284,8 @@ identity metadata.
 
 ## 4. Compatibility
 
-- [x] Java 25/Paper 26.1.2 build 74 compile succeeds and `plugin.yml` uses `api-version: '1.21'`. Verified for `1.1.2`: `mvn clean verify` green, embedded `plugin.yml` dumped from the JAR shows `version: '1.1.2'`, `api-version: '1.21'`, main class `org.xpfarm.aguadeflorida.AguaDeFloridaPlugin`.
+- [x] Java 25/Paper 26.1.2 build 74 compile succeeds and `plugin.yml` uses `api-version: '1.21'`. Verified for `2.0.0`: `mvn clean verify` green, embedded `plugin.yml` dumped from the JAR shows `version: '2.0.0'` (resolved from `${project.version}`, so POM and manifest cannot drift), `api-version: '1.21'`, main class `org.xpfarm.aguadeflorida.AguaDeFloridaPlugin`. Previously verified for `1.1.2`/`1.1.3` the same way.
+- [x] **`2.0.0` data component API verified against the jar, not documentation.** Every signature the release depends on was confirmed by disassembling `paper-api-26.1.2.build.74-stable.jar` with `javap` before any code was written: `DeathProtection.deathProtection()`→`Builder.addEffects(List)`, `ConsumeEffect.playSoundConsumeEffect(Key)` / `.applyStatusEffects(List<PotionEffect>, float)` / `.clearAllStatusEffects()`, `ItemStack.setData/unsetData/resetData/hasData`, `DataComponentTypes.DEATH_PROTECTION` / `.CONSUMABLE` / `.POTION_CONTENTS`, and `EntityResurrectEvent` (Cancellable, `getHand()`). This was done because a prior research pass fabricated `PlayerDeathEvent.setReviveHealth()`, which does not exist in this jar. **`EntityResurrectEvent` has both a 1-arg and a 2-arg constructor, so `getHand()` can be null** — the observation listener null-guards it and falls back to scanning `[HAND, OFF_HAND]`.
 - [x] Hard dependencies, soft dependencies, optional APIs, and load ordering were reviewed and declared. None; `softdepend: [floodgate]` considered and rejected — see Dependencies.
 - [x] Geyser/Floodgate/ViaVersion review covers Bedrock-safe input, UI, inventory, identity, and protocol behavior. **`1.1.3` is a Bedrock-identity fix.** `/agua give <player>` used `getPlayerExact`, which cannot see the `.`-prefixed Java-side username Floodgate assigns a Bedrock account (`username-prefix: "."`, Floodgate's shipped default): `carm` joins as `.acarm`. `Server#getPlayer` would not have helped — it prefix-matches the name, and `.acarm` does not start with `c`. Resolution now goes through `PlayerLookup.resolve` (bare name → `.`-prefixed → case-insensitive sweep, exact always winning), and the not-found message lists online players because Geyser sends no command-suggestion packets, so a Bedrock player has no other way to learn their prefixed name. For `1.1.2`: all four enable together on a live stack (evidence in §7). `1.1.2` introduces no new player-facing interaction — the fixes are message rendering, item distribution arithmetic, and config validation. **The Bedrock questions that matter are 2.0.0's** (custom potion colour, resurrect animation) and are recorded under Runtime verification in §1.
 
@@ -296,8 +297,8 @@ identity metadata.
 
 ## 6. Tests and build
 
-- [x] Unit tests cover separable logic, configuration, serialization, permissions, and failure paths where applicable. **36 tests added — the repository had none.** See coverage note below.
-- [x] `mvn --batch-mode --no-transfer-progress clean verify` succeeds. For `1.1.3`: `Tests run: 42, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, producing `agua-de-florida-1.1.3.jar`. The 36 pre-existing tests all stayed green; the 6 new ones are `PlayerLookupTest$TargetResolution`. Previously for `1.1.2`: `Tests run: 36, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, run against the settled tree after all concurrent edits landed.
+- [x] Unit tests cover separable logic, configuration, serialization, permissions, and failure paths where applicable. **94 tests as of `2.0.0`** (42 at `1.1.3`; the repository had none before `1.1.2`). See coverage note below.
+- [x] `mvn --batch-mode --no-transfer-progress clean verify` succeeds. For `2.0.0`: `Tests run: 94, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, producing `agua-de-florida-2.0.0.jar`. Per class: `ConfigManagerTest` 24, `MobDeathListenerTest` 31, `AguaItemBuilderTest` 19, `AguaCommandTest` 9, `PlayerLookupTest$TargetResolution` 6, `AguaResurrectListenerTest` 5 (new). **Run independently by the primary agent, not relayed from a subagent report**, and the test tree was grepped to confirm **no `@Disabled`, `@Ignore`, or `assumeTrue`** — green was not obtained by suppressing anything. Previously for `1.1.3`: `Tests run: 42, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, producing `agua-de-florida-1.1.3.jar`. The 36 pre-existing tests all stayed green; the 6 new ones are `PlayerLookupTest$TargetResolution`. Previously for `1.1.2`: `Tests run: 36, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, run against the settled tree after all concurrent edits landed.
 - [x] The releasable JAR and embedded `plugin.yml` were inspected; `original-*` JARs are excluded. Verified for `1.1.3` by unzipping the built JAR: `target/` holds exactly one JAR, `agua-de-florida-1.1.3.jar`, with **no `original-*` JAR at all** — shading was removed in `1.1.2`, so none can be produced. Embedded `plugin.yml` reads `version: '1.1.3'`, `api-version: '1.21'`, `main: org.xpfarm.aguadeflorida.AguaDeFloridaPlugin`. Bytecode major version of the first `.class` entry is **69 (Java 25)**, matching the ecosystem standard. Class entries are `org/xpfarm/aguadeflorida/**` only — no bundled Paper/Bukkit, no leaked files.
 
 `pom.xml` issues — **resolved in 1.1.2**:
@@ -347,7 +348,53 @@ handler. These are recorded rather than papered over.
 
 ## 7. Matrix
 
-### 7a — single-plugin runtime verification (`1.1.3`) — PARTIAL
+### 7a — single-plugin runtime verification (`2.0.0`) — PARTIAL
+
+Disposable Legendary stack, fresh volume, `2.0.0` JAR only, on 2026-07-20. Slot-leased
+(slot 0, Java 25600, Bedrock 19200), torn down with `down -v`, lease released, no orphans.
+
+- [x] Paper, Geyser, Floodgate, and ViaVersion start successfully together. **Verified.** Paper
+      reached `Done (16.686s)! For help, type "help"`; the Java port answered a real protocol
+      handshake reporting `Paper 26.1.2 | protocol 775`, `PLAYERS: 0 / 20`. `/plugins` shows all
+      four green: AguaDeFlorida, floodgate (2.2.5-SNAPSHOT), Geyser-Spigot (2.11.0-SNAPSHOT),
+      ViaVersion (5.11.0). Zero exceptions, SEVERE, or ERROR lines attributable to the plugin;
+      the only warnings are Paper's own `sun.misc.Unsafe`/`joml` notices and the image's
+      `level-type` default. Zero secret occurrences in logs.
+- [x] **Acceptance check 21 verified, and it carries unusual weight.** `Enabling AguaDeFlorida
+      v2.0.0` → `Agua de Florida v2.0.0 enabled!` with no disable. Because `onEnable` calls
+      `verifyDeathProtectionApplied()` and disables the plugin if the component did not attach,
+      **a successful enable is direct runtime proof that the experimental `DEATH_PROTECTION`
+      data component actually applied on a real Paper server** — the single riskiest assumption
+      in this release, now observed rather than inferred.
+- [x] Commands exercised over RCON on the live server: `/agua reload` →
+      `Agua de Florida configuration reloaded successfully!`; `/agua give` (no args) →
+      correct console-requires-player error; `/agua give NotARealPlayer123` →
+      `No player matches 'NotARealPlayer123'; no players are online.` — confirming the `1.1.2`
+      `getPlayerExact` fix (no prefix matching) survived the rewrite.
+- [ ] Java and Bedrock smoke tests cover joins plus affected commands, events, permissions,
+      persistence, and reloads. **PARTIAL — left unchecked deliberately.** No client joined, Java
+      or Bedrock. **The four open questions from §1 remain unverified and cannot be settled by
+      this rig, because every one of them requires a player to actually die holding the item:**
+      (1) does `DEATH_PROTECTION` trigger from the **offhand** as well as the main hand
+      (acceptance 13); (2) does `EntityResurrectEvent` fire for a custom death-protection item,
+      and is `getHand()` populated (the listener is written so that if it never fires, only
+      logging/messaging is absent and nothing load-bearing breaks); (3) does vanilla
+      **auto-consume** the item, or must the plugin shrink the stack (acceptance 16); (4) do
+      Geyser/Bedrock clients render the custom potion colour and resurrect animation
+      (acceptance 20). Also unverified: that right-click is genuinely inert in every context
+      (acceptance 11) and that a legacy `WATER_BUCKET` item no longer resurrects (acceptance 18)
+      — both are enforced in code and unit-tested, but not observed in-world.
+- [ ] Public deployment smoke tests verify `play.xpfarm.org` reaches the intended Java and Bedrock entry points. Belongs to gate 11, not this gate.
+- [x] Ollama and Umami unavailable-endpoint tests keep the server and plugins available when applicable. Not applicable — no external integrations.
+
+**Compose mount defect caught before this run.** `docker-compose.yml` still defaulted
+`XPFARM_PLUGIN_JAR` to `agua-de-florida-1.1.2.jar`, which `mvn clean` had just deleted. Docker
+silently creates an empty *directory* at a missing bind-mount source, so the stack would have
+booted looking entirely healthy with the plugin never loaded — the same failure mode that made
+historical "runtime verified" evidence untrustworthy across 9 of 14 plugin repos. Repointed to
+`2.0.0` before booting.
+
+### 7a — single-plugin runtime verification (`1.1.3`) — PARTIAL (superseded by the `2.0.0` run above)
 
 Evidence below comes from a **single disposable Legendary stack run on 2026-07-20**
 (image `05jchambers/legendary-minecraft-geyser-floodgate:latest`) with **all six fixed plugin

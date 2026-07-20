@@ -2,6 +2,79 @@
 
 All notable changes to Agua de Florida are documented here.
 
+## 2.0.0 - 2026-07-20
+
+The item is no longer a `WATER_BUCKET`, and the plugin no longer performs the
+resurrection itself. Both changes are the same change: vanilla owns death protection now.
+
+### BREAKING
+
+- **Existing Agua de Florida items stop working.** A 1.x item is a `WATER_BUCKET` and is
+  no longer recognised — the genuine-item check now requires `Material.POTION` as well as
+  the persistent-data tag. No conversion code ships. Re-issue replacements with
+  `/aguadeflorida give <player> [amount]`. There is no in-place migration and no
+  compatibility shim; a half-recognised legacy item would be worse than a plainly dead one.
+
+### Changed
+
+- The item is a `POTION` instead of a `WATER_BUCKET`. The bucket was not cosmetic: right-
+  clicking it placed a water source and turned the item into an empty bucket, silently
+  destroying the player's save. The material is deliberately no longer configurable,
+  because making it configurable would let an admin reinstate exactly that defect.
+- **Right-click is now completely inert.** The `minecraft:consumable` component is unset,
+  and drinking is a plain potion's only built-in right-click behaviour.
+- **Vanilla performs the resurrection.** Since MC 1.21.2 death protection is driven by the
+  `minecraft:death_protection` data component rather than by the Totem of Undying item
+  type, so the item is placed on vanilla's real resurrection path. The sound, the status
+  effects and the vanilla-style effect wipe are all declared on the component rather than
+  applied by plugin code.
+- Mob drop sources are now `WITCH` 8%, `EVOKER` 25% and `DROWNED` 1%. `VINDICATOR` was
+  dropped: it shares raid content with the Evoker, so listing both doubled up on one source.
+- Per-mob drop rates replace the single global rate. `mob_drops.mob_types` is now a mapping
+  of mob to rate; the 1.x list form is still read, with every listed mob using
+  `mob_drops.default_rate`.
+- `onEnable` now verifies that `DEATH_PROTECTION` actually applied to the built item and
+  disables the plugin with an ERROR if it did not. The data component API is experimental
+  and Paper promises no cross-version compatibility, so a silent degradation into an item
+  that no longer saves anyone is worse than a plugin that refuses to start. There is
+  deliberately no fallback resurrection path — two of those risk double-firing.
+- Added `item.color`, an RGB hex tint for the potion liquid, falling back to `#1E90FF`.
+
+### Fixed
+
+- Looting is now read from the weapon that dealt the killing blow rather than from whatever
+  the killer happens to be holding when the death event fires. For anything fired the
+  shooter has usually swapped by the time the projectile lands, and for a dispenser or a
+  mob-fired arrow there was no held item to read at all.
+
+### Removed
+
+- `PlayerDeathListener`, the cancel-the-death-and-reimplement-it emulation layer. Its
+  totem-item-swap animation hack was a **duplication exploit**: a player quitting inside the
+  9-tick window logged out holding a genuine fabricated `TOTEM_OF_UNDYING`. Deleted rather
+  than patched — the whole path is redundant now that vanilla resurrects.
+- `CrossPlatformUtils`, ~190 lines of Bedrock offhand handling that existed only to support
+  that listener. Vanilla's death-protection check scans both hands itself. The
+  `softdepend: [floodgate]` that would have fixed its broken API probe was not added, since
+  the dependency would have had no remaining consumer.
+- **Crafting, entirely.** It was disabled by default, the advertised `recipe.pattern` and
+  `recipe.ingredients` keys were never read by any code, and the hardcoded recipe consumed
+  a `WATER_BUCKET` to produce a `WATER_BUCKET`.
+- Config keys: `item.material`, `item.unbreakable`, the whole `recipe:` block,
+  `cross_platform.auto_move_to_main_hand`, and `totem.restore_health`,
+  `totem.show_animation`, `totem.play_sound`, `totem.consume_on_use` — the last four are
+  all vanilla-controlled by the component now.
+
+### Added
+
+- An `EntityResurrectEvent` listener that is **observation only**. It never performs and
+  never cancels a resurrection; it exists so a save can be logged (`debug.log_saves`) and
+  announced (`messages.life_saved`). It null-guards `getHand()`, which is nullable because
+  of the event's one-argument constructor, and confirms the item is genuinely Agua de
+  Florida so a vanilla Totem of Undying save is not reported as one. Nothing depends on it:
+  if the event never fires for a custom death-protection item, the item still saves players
+  and only the logging and messaging are absent.
+
 ## 1.1.3 - 2026-07-20
 
 Bug-fix release. No behaviour redesign; the item is still `WATER_BUCKET`-based.

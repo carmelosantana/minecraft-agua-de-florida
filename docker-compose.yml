@@ -20,7 +20,7 @@ services:
       # version. A missing source here would be silently created as a directory by
       # Docker and the plugin would never load, so keep XPFARM_PLUGIN_JAR pointed at
       # a JAR that actually exists.
-      - ${XPFARM_PLUGIN_JAR:-./target/agua-de-florida-1.1.2.jar}:/minecraft/plugins/agua-de-florida.jar
+      - ${XPFARM_PLUGIN_JAR:-./target/agua-de-florida-2.0.0.jar}:/minecraft/plugins/agua-de-florida.jar
     stdin_open: true # docker run -i
     tty: true # docker run -t
     entrypoint: ["/bin/bash", "/scripts/start.sh"]

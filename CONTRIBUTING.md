@@ -32,10 +32,11 @@ agua-de-florida/
 │   ├── commands/
 │   │   └── AguaCommand.java           # Command handlers
 │   ├── listeners/
-│   │   ├── PlayerDeathListener.java   # Death prevention logic
+│   │   ├── AguaResurrectListener.java # Save logging/messaging (observation only)
 │   │   └── MobDeathListener.java      # Mob drop handling
 │   └── utils/
 │       ├── ConfigManager.java         # Configuration management
+│       ├── PlayerLookup.java          # Floodgate-aware player resolution
 │       └── AguaItemBuilder.java       # Custom item creation
 ├── src/main/resources/
 │   ├── plugin.yml                     # Plugin metadata
@@ -47,8 +48,8 @@ agua-de-florida/
 
 ### Java Conventions
 - **Package Naming**: Use `org.xpfarm.aguadeflorida` as base package
-- **Class Naming**: PascalCase (e.g., `PlayerDeathListener`)
-- **Method Naming**: camelCase (e.g., `handlePlayerDeath`)
+- **Class Naming**: PascalCase (e.g., `MobDeathListener`)
+- **Method Naming**: camelCase (e.g., `handleEntityDeath`)
 - **Variable Naming**: camelCase (e.g., `playerName`)
 - **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_HEALTH`)
 
@@ -183,13 +184,15 @@ Closes #123
 - Runtime configuration updates
 
 #### AguaItemBuilder (Item Creation)
-- Custom item generation
+- Custom item generation (`Material.POTION` + `death_protection` data component)
 - Item identification/validation
-- Recipe registration
+- Startup verification that the component actually applied (fail-loudly)
 - Item caching for performance
 
 #### Event Listeners
-- **PlayerDeathListener**: Core death prevention logic
+- **AguaResurrectListener**: Observation only — save logging and player messaging. Vanilla performs
+  the resurrection via the `minecraft:death_protection` data component; the plugin must never
+  cancel a death or emulate a revive. There is exactly one resurrection path, and it is not ours.
 - **MobDeathListener**: Mob drop handling
 - Event priority management
 - Performance optimization
