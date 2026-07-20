@@ -298,7 +298,7 @@ identity metadata.
 
 - [x] Unit tests cover separable logic, configuration, serialization, permissions, and failure paths where applicable. **36 tests added — the repository had none.** See coverage note below.
 - [x] `mvn --batch-mode --no-transfer-progress clean verify` succeeds. For `1.1.3`: `Tests run: 42, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, producing `agua-de-florida-1.1.3.jar`. The 36 pre-existing tests all stayed green; the 6 new ones are `PlayerLookupTest$TargetResolution`. Previously for `1.1.2`: `Tests run: 36, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, run against the settled tree after all concurrent edits landed.
-- [x] The releasable JAR and embedded `plugin.yml` were inspected; `original-*` JARs are excluded. Exactly one JAR (`agua-de-florida-1.1.2.jar`); class entries are `org/xpfarm/aguadeflorida/**` only — no bundled Paper/Bukkit, no leaked files. `original-*` cannot occur now that shading is removed.
+- [x] The releasable JAR and embedded `plugin.yml` were inspected; `original-*` JARs are excluded. Verified for `1.1.3` by unzipping the built JAR: `target/` holds exactly one JAR, `agua-de-florida-1.1.3.jar`, with **no `original-*` JAR at all** — shading was removed in `1.1.2`, so none can be produced. Embedded `plugin.yml` reads `version: '1.1.3'`, `api-version: '1.21'`, `main: org.xpfarm.aguadeflorida.AguaDeFloridaPlugin`. Bytecode major version of the first `.class` entry is **69 (Java 25)**, matching the ecosystem standard. Class entries are `org/xpfarm/aguadeflorida/**` only — no bundled Paper/Bukkit, no leaked files.
 
 `pom.xml` issues — **resolved in 1.1.2**:
 - `maven.compiler.release=25` silently overrode `<source>21</source><target>21</target>`. The
