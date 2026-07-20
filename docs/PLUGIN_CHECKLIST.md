@@ -347,39 +347,60 @@ handler. These are recorded rather than papered over.
 
 ## 7. Matrix
 
-### 7a — single-plugin runtime verification (`1.1.2`) — PARTIAL
+### 7a — single-plugin runtime verification (`1.1.3`) — PARTIAL
 
-- [x] Paper, Geyser, Floodgate, and ViaVersion start successfully together. Verified on a
-      fresh-volume Legendary stack, slot 0, ports 25600/19200. `Done (20.528s)!`, then:
-      `AguaDeFlorida (1.1.2), Geyser-Spigot (2.11.0-SNAPSHOT), ViaVersion (5.11.0), floodgate (2.2.5-SNAPSHOT b138)`.
-      `Enabling AguaDeFlorida v1.1.2` → `Agua de Florida v1.1.2 enabled!`. **Zero exceptions,
-      severes, or load errors in the full startup log.** Stack torn down with `down -v`; lease released.
+Evidence below comes from a **single disposable Legendary stack run on 2026-07-20**
+(image `05jchambers/legendary-minecraft-geyser-floodgate:latest`) with **all six fixed plugin
+JARs mounted together**. The same run backs the gate 7a note in all six repositories.
+
+- [x] Paper, Geyser, Floodgate, and ViaVersion start successfully together. **Verified.** Paper
+      reached `Done (18.178s)! For help, type "help"`. The Java port answered a real Minecraft
+      protocol handshake — not merely a TCP connect — reporting `Paper 26.1.2 | protocol 775` and
+      `PLAYERS: 0 / 20`. `/plugins` reported 9 plugins, all green/enabled: AguaDeFlorida, floodgate,
+      Geyser-Spigot, GlutenFreeBread, StarterPack, TheCurse, ViaVersion, WildWeatherUpdate,
+      WorldCRUD. Companion versions observed: floodgate v2.2.5-SNAPSHOT (b138-fc99cfc),
+      Geyser-Spigot v2.11.0-SNAPSHOT (Geyser 2.11.0-b1200), ViaVersion present; Geyser started on
+      UDP port 19200. Each plugin enabled at its new version with **zero exceptions, errors, or
+      SEVERE lines attributable to any of the six** — including `Enabling AguaDeFlorida v1.1.3`.
 - [ ] Java and Bedrock smoke tests cover joins plus affected commands, events, permissions,
-      persistence, and reloads. **NOT DONE — no client and no console channel available.** The
-      container exposes no RCON and no `screen`, and writing to the server process's stdin is
-      permission-denied, so not even a console-only `/agua reload` could be issued. This is a
-      limitation of the harness, not a finding about the plugin. See follow-up below.
+      persistence, and reloads. **PARTIAL — the Java side was exercised, the Bedrock side was not.
+      Left unchecked deliberately.**
+
+      *What was exercised.* The **Floodgate prefix assumption was confirmed empirically, not merely
+      from documentation**: reading `/minecraft/plugins/floodgate/config.yml` inside the running
+      container on the Floodgate 2.2.5 build showed `username-prefix: "."` and
+      `replace-spaces: true`, alongside the shipped comment "Floodgate prepends a prefix to bedrock
+      usernames to avoid conflicts". The `.` prefix this fix depends on is now **observed on the
+      actual runtime, not assumed** — the single most important upgrade to the evidence.
+
+      The **new failure path was then exercised end-to-end over RCON on the live server** for every
+      fixed command across all six plugins — `/aguadeflorida give carm`, `/curse start carm`,
+      `/curse book carm`, `/worldcrud listpermissions carm`, `/starterpack give carm`,
+      `/gfbread clear carm`, and `/weather trigger rain carm` — and each returned the new
+      message with no exception: exactly `No player matches 'carm'; no players are online.` This proves that
+      `PlayerLookup.resolve` / `resolveAllowingPartial` / `onlineNames` / `noSuchPlayerMessage`
+      actually execute correctly against real Bukkit APIs, that command dispatch reaches them, and
+      that the message renders — none of which the unit tests could show.
+
+      *What remains unverified.* **The positive match is still unproven.** No real Bedrock client
+      was available, so no player with a `.`-prefixed Java-side username ever joined. What is
+      verified is that the resolution path runs without error and that the not-found branch is
+      correct; that `/aguadeflorida give carm` actually **finds** a Bedrock player named `.acarm` has
+      **not** been observed. Only the empty-online-list branch of `noSuchPlayerMessage` was
+      exercised; the branch that lists online player names was not. The operator will verify live on
+      the dev server with helpers. `resolve` / `resolveAllowingPartial` still have **no unit-test
+      coverage** (Bukkit statics, no MockBukkit).
 - [ ] Public deployment smoke tests verify `play.xpfarm.org` reaches the intended Java and Bedrock entry points. Belongs to gate 11, not this gate.
 - [x] Ollama and Umami unavailable-endpoint tests keep the server and plugins available when applicable. Not applicable — no external integrations.
 
-**What 7a proves for `1.1.2`:** the JAR loads, enables, and coexists with the cross-play stack
-without error. **What it does not prove:** any of the 10 behavioural acceptance checks in §1, all of
-which need a player. Those remain unverified at release time and are accepted as such for a
-bug-fix release whose changes are covered by 36 unit tests over the exact arithmetic that was wrong.
-
-**Follow-up (blocking for 2.0.0, not for 1.1.2):** enable RCON in `docker-compose.yml` so gate 7a
-can actually exercise commands. 2.0.0 has four open runtime questions that *cannot* be answered
-without driving a live server — whether `DEATH_PROTECTION` fires from the offhand, whether
-`EntityResurrectEvent` fires for a custom item, whether vanilla consumes the item itself, and how
-Geyser renders it. Shipping 2.0.0 on a harness that cannot run a command would mean shipping those
-four unanswered.
-
-Also fixed while setting this up: `docker-compose.yml` mounted `./target/agua-de-florida-1.0.0.jar`,
-a hardcoded version that had not existed since `1.1.0`. Docker silently creates a *directory* at a
-missing bind-mount source, so the plugin would never have loaded while the stack looked healthy —
-meaning any prior "runtime verified" claim made through this compose file after `1.0.0` was not
-testing the plugin at all. Now mounts `${XPFARM_PLUGIN_JAR}` to the version-free updater destination
-name.
+**Prior 7a note (`1.1.2`) superseded.** The previous pass could not issue any command:
+no RCON, no `screen`, and stdin to the server process was permission-denied. RCON was
+available in this run, which is what made the failure-path evidence above possible.
+Still recorded from that pass, because it remains true: `docker-compose.yml` had mounted
+`./target/agua-de-florida-1.0.0.jar`, a hardcoded version absent since `1.1.0`; Docker
+silently creates a *directory* at a missing bind-mount source, so the plugin would never
+have loaded while the stack looked healthy. It now mounts `${XPFARM_PLUGIN_JAR}` to the
+version-free updater destination name.
 
 ### 7b — ten-plugin ecosystem matrix — NOT RUN
 
