@@ -8,6 +8,12 @@ services:
       - "${XPFARM_JAVA_PORT:-25565}:${XPFARM_JAVA_PORT:-25565}"
       - "${XPFARM_BEDROCK_PORT:-19132}:${XPFARM_BEDROCK_PORT:-19132}"
       - "${XPFARM_BEDROCK_PORT:-19132}:${XPFARM_BEDROCK_PORT:-19132}/udp"
+      # RCON is the only way to drive the server console in this image: it ships no
+      # screen/tmux, `docker attach` injection does not reach the JVM's stdin, and
+      # /proc/<pid>/fd/0 is permission-denied. Without this, gate 7a can only prove
+      # the plugin loads -- it cannot run a single command. Bound to loopback: this
+      # is a disposable test rig, but an open RCON port is remote code execution.
+      - "127.0.0.1:${XPFARM_RCON_PORT:-25575}:25575"
     volumes:
       - minecraft:/minecraft
       # Mount to the updater's destination filename so the path does not carry a
