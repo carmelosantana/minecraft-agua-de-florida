@@ -2,6 +2,28 @@
 
 All notable changes to Agua de Florida are documented here.
 
+## 1.1.3 - 2026-07-20
+
+Bug-fix release. No behaviour redesign; the item is still `WATER_BUCKET`-based.
+The potion rewrite lands in 2.0.0.
+
+### Fixed
+
+- `/agua give <player>` now finds Bedrock players. Floodgate joins a Bedrock account
+  under a prefixed Java-side username — `.acarm` for a player who calls themself
+  `carm` — using the `username-prefix: "."` default from Floodgate's shipped config.
+  `getPlayerExact` is an exact match and never saw the prefixed name, and
+  `Server#getPlayer` prefix-matches the *name*, so `getPlayer("carm")` did not find
+  `.acarm` either: that name starts with a dot. Lookups now go through
+  `PlayerLookup.resolve`, which tries the bare name, then the `.`-prefixed form, then
+  a case-insensitive sweep that also covers a server which reconfigured the prefix.
+  Exact matches still win over everything, so the 1.1.2 fix against `/agua give Car`
+  resolving to `Carmelo123` is preserved.
+- The "player not found" message now lists who is actually online. Bedrock players get
+  no tab completion at all — Geyser bakes the command tree into one login packet and
+  never sends suggestion packets — so this message is the only channel through which a
+  player discovers their own prefixed username.
+
 ## 1.1.2 - 2026-07-19
 
 Bug-fix release. No behaviour redesign; the item is still `WATER_BUCKET`-based.

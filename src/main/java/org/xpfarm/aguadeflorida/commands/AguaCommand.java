@@ -13,6 +13,7 @@ import org.bukkit.util.StringUtil;
 import org.xpfarm.aguadeflorida.AguaDeFloridaPlugin;
 import org.xpfarm.aguadeflorida.utils.AguaItemBuilder;
 import org.xpfarm.aguadeflorida.utils.ConfigManager;
+import org.xpfarm.aguadeflorida.utils.PlayerLookup;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,10 +75,14 @@ public class AguaCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 2) {
             // Target player specified
             String targetName = args[1];
-            // Exact match only: prefix matching could resolve "Car" to "Carmelo123"
-            target = plugin.getServer().getPlayerExact(targetName);
+            // Exact match only: prefix matching could resolve "Car" to "Carmelo123".
+            // PlayerLookup additionally tries the Floodgate "." prefix that Bedrock
+            // accounts carry on their Java-side username.
+            target = PlayerLookup.resolve(targetName).orElse(null);
             if (target == null) {
-                sender.sendMessage(Component.text("Player '" + targetName + "' not found.", NamedTextColor.RED));
+                sender.sendMessage(Component.text(
+                        PlayerLookup.noSuchPlayerMessage(targetName, PlayerLookup.onlineNames()),
+                        NamedTextColor.RED));
                 return true;
             }
         } else {

@@ -286,7 +286,7 @@ identity metadata.
 
 - [x] Java 25/Paper 26.1.2 build 74 compile succeeds and `plugin.yml` uses `api-version: '1.21'`. Verified for `1.1.2`: `mvn clean verify` green, embedded `plugin.yml` dumped from the JAR shows `version: '1.1.2'`, `api-version: '1.21'`, main class `org.xpfarm.aguadeflorida.AguaDeFloridaPlugin`.
 - [x] Hard dependencies, soft dependencies, optional APIs, and load ordering were reviewed and declared. None; `softdepend: [floodgate]` considered and rejected — see Dependencies.
-- [x] Geyser/Floodgate/ViaVersion review covers Bedrock-safe input, UI, inventory, identity, and protocol behavior. For `1.1.2`: all four enable together on a live stack (evidence in §7). `1.1.2` introduces no new player-facing interaction — the fixes are message rendering, item distribution arithmetic, and config validation. **The Bedrock questions that matter are 2.0.0's** (custom potion colour, resurrect animation) and are recorded under Runtime verification in §1.
+- [x] Geyser/Floodgate/ViaVersion review covers Bedrock-safe input, UI, inventory, identity, and protocol behavior. **`1.1.3` is a Bedrock-identity fix.** `/agua give <player>` used `getPlayerExact`, which cannot see the `.`-prefixed Java-side username Floodgate assigns a Bedrock account (`username-prefix: "."`, Floodgate's shipped default): `carm` joins as `.acarm`. `Server#getPlayer` would not have helped — it prefix-matches the name, and `.acarm` does not start with `c`. Resolution now goes through `PlayerLookup.resolve` (bare name → `.`-prefixed → case-insensitive sweep, exact always winning), and the not-found message lists online players because Geyser sends no command-suggestion packets, so a Bedrock player has no other way to learn their prefixed name. For `1.1.2`: all four enable together on a live stack (evidence in §7). `1.1.2` introduces no new player-facing interaction — the fixes are message rendering, item distribution arithmetic, and config validation. **The Bedrock questions that matter are 2.0.0's** (custom potion colour, resurrect animation) and are recorded under Runtime verification in §1.
 
 ## 5. External services
 
@@ -297,7 +297,7 @@ identity metadata.
 ## 6. Tests and build
 
 - [x] Unit tests cover separable logic, configuration, serialization, permissions, and failure paths where applicable. **36 tests added — the repository had none.** See coverage note below.
-- [x] `mvn --batch-mode --no-transfer-progress clean verify` succeeds. `Tests run: 36, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, run against the settled tree after all concurrent edits landed.
+- [x] `mvn --batch-mode --no-transfer-progress clean verify` succeeds. For `1.1.3`: `Tests run: 42, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, producing `agua-de-florida-1.1.3.jar`. The 36 pre-existing tests all stayed green; the 6 new ones are `PlayerLookupTest$TargetResolution`. Previously for `1.1.2`: `Tests run: 36, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`, run against the settled tree after all concurrent edits landed.
 - [x] The releasable JAR and embedded `plugin.yml` were inspected; `original-*` JARs are excluded. Exactly one JAR (`agua-de-florida-1.1.2.jar`); class entries are `org/xpfarm/aguadeflorida/**` only — no bundled Paper/Bukkit, no leaked files. `original-*` cannot occur now that shading is removed.
 
 `pom.xml` issues — **resolved in 1.1.2**:
@@ -320,6 +320,25 @@ directly:
   NaN, and both infinities.
 - `ConfigManager.clamp(...)` plus a `YamlConfiguration` round-trip — 12 tests.
 - `AguaItemBuilder.isTagPresentAndTrue(Boolean)` — 3 tests.
+
+Added in `1.1.3`:
+
+- `PlayerLookup.targetNameCandidates(String)` and `PlayerLookup.noSuchPlayerMessage(String, List)`
+  — 6 tests covering the bare-name → `.`-prefix expansion, no double-prefixing of an
+  already-prefixed name, whitespace trimming, null/blank yielding nothing, and both branches of
+  the failure message.
+
+`PlayerLookup.resolve` / `resolveAllowingPartial` are **not** unit-tested: they call
+`Bukkit.getPlayerExact` and `Bukkit.getOnlinePlayers`, which need a live server, and no MockBukkit
+dependency exists here. All of the Floodgate decision-making lives in `targetNameCandidates`, which
+is pinned exhaustively; what remains untested in `resolve` is the Bukkit call sequence itself.
+
+**Not verified for `1.1.3` — no real Bedrock client available.** The fix has not been exercised
+against an actual Floodgate-joined Bedrock account. Nothing in this harness can produce one: gate 7a
+has no Bedrock client, and the prefixed-username behaviour only appears when a real Bedrock player
+joins through Floodgate. The prefix value (`.`) is taken from Floodgate's shipped `config.yml`
+default rather than observed on a live join. Confirming that `/agua give carm` reaches a Bedrock
+player whose Java-side name is `.acarm` remains an open runtime check.
 
 **Not unit-tested, requiring runtime verification:** the inventory-overflow drop path,
 `getPlayerExact` resolution, rendered colour of deserialized names, non-italic item rendering, the
