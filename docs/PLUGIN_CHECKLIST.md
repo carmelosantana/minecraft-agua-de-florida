@@ -461,17 +461,17 @@ model.
 ## 8. CI/CD
 
 - [x] Identical standard plugin Actions workflow is installed with the required triggers, Temurin 25 build, artifact, checksum, and release behavior. Present from 1.1.1.
-- [x] Successful main Actions run is recorded before tagging. For `1.1.3`: `fix/floodgate-name-resolution` was merged fast-forward to `main` and pushed on 2026-07-20. The `main`-branch Actions run for commit `badb66e` completed with conclusion `success` **before** tag `v1.1.3` was created. No tag was pushed against a red or in-flight run. Previously for `1.1.2`: run `29742405737` on `main` for commit `b1a7fd7` — `completed / success`, 26s.
+- [x] Successful main Actions run is recorded before tagging. For `2.0.0`: `main`-branch run `29772083783` for commit `3c83e66` completed with conclusion `success` **before** tag `v2.0.0` was created — confirmed clear-and-completed, not in-flight. No tag was pushed against a red or in-flight run. Previously for `1.1.3`: `main` run for `badb66e` `success` before `v1.1.3`; for `1.1.2`: run `29742405737` for `b1a7fd7` `success`.
 - [x] Workflow permissions contain no broader access than the documented contract.
 
-## 9. Release — `v1.1.3` COMPLETE
+## 9. Release — `v2.0.0` COMPLETE
 
-- [x] Semantic version matches the POM, plugin metadata, and `v<version>` tag. Verified: `pom.xml` `<version>` `1.1.3` equals tag `v1.1.3` equals the `plugin.yml` version read out of the built JAR.
-- [x] Successful tag Actions run and GitHub release are recorded. Annotated tag `v1.1.3` created on verified commit `badb66e` and pushed; the tag Actions run completed with conclusion `success`. GitHub release published 2026-07-20 14:47:54 UTC with `draft=false`, `prerelease=false`, and it is now the repository's Latest release.
-- [x] Release contains exactly one updater-matching JAR plus `SHA256SUMS.txt` and no `original-*` JAR. Verified by downloading the published release assets: exactly one JAR matching the updater asset pattern, plus `SHA256SUMS.txt`, and no `original-*` JAR.
-- [x] Downloaded release assets pass `sha256sum --check SHA256SUMS.txt`. Reported `OK` for the JAR.
+- [x] Semantic version matches the POM, plugin metadata, and `v<version>` tag. Verified: `pom.xml` `<version>` `2.0.0` equals tag `v2.0.0` equals the `plugin.yml` version read out of the built JAR (`plugin.yml` uses `${project.version}`, so no drift is possible).
+- [x] Successful tag Actions run and GitHub release are recorded. Annotated tag `v2.0.0` created on verified commit `3c83e66` and pushed; tag Actions run `29792307499` completed with conclusion `success`. GitHub release published 2026-07-20 with `draft=false`, **`prerelease=false`** — it is now the repository's Latest release. **This was a deliberate operator decision made with the consequence stated in full:** because the updater manifest entry has no `pin`, making `2.0.0` Latest means the next production Dokploy redeploy installs `2.0.0` in place of `1.1.3`, and `2.0.0`'s core resurrection behaviour has not been observed working on a live server (see §7 open items). The operator chose "full release now" over a prerelease or a production pin.
+- [x] Release contains exactly one updater-matching JAR plus `SHA256SUMS.txt` and no `original-*` JAR. Verified by downloading the published assets: `agua-de-florida-2.0.0.jar` (32826 b) + `SHA256SUMS.txt` only; zero `original-*` JARs.
+- [x] Downloaded release assets pass `sha256sum --check SHA256SUMS.txt`. Reported `agua-de-florida-2.0.0.jar: OK`.
 
-Previous release `v1.1.2` was published the same way. `v2.0.0` will re-run this section; its boxes are not pre-ticked here.
+Previous releases `v1.1.2` and `v1.1.3` were published the same way; `v1.1.3` is no longer Latest.
 
 ## 10. Updater
 
