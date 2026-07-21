@@ -449,14 +449,31 @@ silently creates a *directory* at a missing bind-mount source, so the plugin wou
 have loaded while the stack looked healthy. It now mounts `${XPFARM_PLUGIN_JAR}` to the
 version-free updater destination name.
 
-### 7b — ten-plugin ecosystem matrix — NOT RUN
+### 7b — ecosystem matrix (`2.0.0`) — PASSED 2026-07-21
 
-- [ ] Fresh-volume Legendary stack test covers all ten updater-managed plugins.
-- [ ] Each updater-managed plugin's manifest `enabled` value, default state, and expected fresh-volume behavior are recorded separately.
+- [x] Fresh-volume Legendary stack test covers all updater-managed plugins. **12/12 PRESENT.**
+      Run via the shared rig (`xpfarm-test-stack matrix up --from-releases`) on a fresh volume,
+      roster read from the updater's `plugins.json` rather than a hardcoded list.
+- [x] Each updater-managed plugin's manifest `enabled` value, default state, and expected fresh-volume behavior are recorded separately. Roster resolved from the live manifest; every entry installed and enabled.
 
-Out-of-band and **not a prerequisite for this release**, per the lifecycle. `1.1.2` changes no
-updater manifest entry and adds no dependency. Worth running after `2.0.0`, which changes the item
-model.
+**`--from-releases` was used deliberately: it installs the published assets through the real
+updater, so this is what production will actually install.** The updater reported
+`Agua de Florida: installed v2.0.0`, and Paper logged `Enabling AguaDeFlorida v2.0.0` →
+`Agua de Florida v2.0.0 enabled!` — so the fail-loudly `DEATH_PROTECTION` check passed a second
+time, now alongside 11 other plugins rather than alone.
+
+Companions: Paper 26.1.2 (protocol 775 verified by real handshake), Geyser-Spigot 2.11.0-SNAPSHOT,
+floodgate 2.2.5-SNAPSHOT, ViaVersion 5.11.0. Co-resident plugins: CopperKingdom 0.2.1,
+DeathDepot 1.1.1, ElectricFurnace 0.2.1, GlutenFreeBread 1.1.3, Ollama 0.2.1, StarterPack 1.1.2,
+TheCurse 0.2.2, TimberBlast 1.0.0, Umami 1.1.1, WildWeatherUpdate 1.0.2, WorldCRUD 1.1.2.
+
+Zero exceptions, SEVERE lines, or enable failures attributable to any plugin. No duplicate-JAR or
+legacy-archival warnings. `/agua reload` exercised over RCON inside the full ecosystem and returned
+the correct rendered message. Stack torn down with the lease released and no orphaned containers.
+
+**Still does not cover the death test.** The matrix proves 2.0.0 installs, enables, and coexists;
+it cannot prove the resurrection fires. The four open items under 7a remain open — they require a
+player to die holding the item.
 
 ## 8. CI/CD
 
